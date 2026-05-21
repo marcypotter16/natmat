@@ -1,0 +1,97 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+#editor-pane {
+  flex: 1;
+  overflow: auto;
+  min-width: 0;
+}
+
+.divider {
+  width: 1px;
+  background: #333;
+  flex-shrink: 0;
+}
+
+#output-pane,
+#preview-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.pane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 14px;
+  background: #222;
+  border-bottom: 1px solid #333;
+  font-size: 11px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+#status, #preview-status {
+  font-size: 11px;
+}
+
+#status.idle, #preview-status.idle { color: #444; }
+#status.loading, #preview-status.loading { color: #f0c040; }
+#status.done, #preview-status.done    { color: #6db56d; }
+#status.error, #preview-status.error  { color: #e06c75; }
+
+#typst-editor {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+#svg-container {
+  flex: 1;
+  overflow: auto;
+  background: #fff;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#svg-container svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+
+/* CodeMirror */
+.cm-editor {
+  height: 100%;
+  font-size: 14px;
+}
+
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+.cm-scroller {
+  font-family: inherit;
+  line-height: 1.7;
+}
