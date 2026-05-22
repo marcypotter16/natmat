@@ -247,6 +247,7 @@ async fn save_session(
 
     let dir = std::path::PathBuf::from(home)
         .join("Documents")
+        .join("natmat")
         .join("natmat-sessions")
         .join(ts.to_string());
 
