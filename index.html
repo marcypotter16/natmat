@@ -7,8 +7,17 @@
   </head>
   <body>
     <div id="app">
-      <div id="editor-pane"></div>
-      <div class="divider"></div>
+      <div id="editor-pane">
+        <div class="pane-header">
+          <span>Italiano</span>
+          <div class="toggle-buttons">
+            <button id="toggle-typst" class="active" title="Mostra/nascondi pannello Typst">Typst</button>
+            <button id="toggle-preview" class="active" title="Mostra/nascondi anteprima">Preview</button>
+          </div>
+        </div>
+        <div id="editor-inner"></div>
+      </div>
+      <div class="divider" id="divider-1"></div>
       <div id="output-pane">
         <div class="pane-header">
           <span>Typst</span>
@@ -16,7 +25,7 @@
         </div>
         <div id="typst-editor"></div>
       </div>
-      <div class="divider"></div>
+      <div class="divider" id="divider-2"></div>
       <div id="preview-pane">
         <div class="pane-header">
           <span>Anteprima</span>

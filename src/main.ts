@@ -7,6 +7,57 @@ import { invoke } from "@tauri-apps/api/core";
 const statusEl = document.getElementById("status")!;
 const previewStatus = document.getElementById("preview-status")!;
 const svgContainer = document.getElementById("svg-container")!;
+const outputPane = document.getElementById("output-pane")!;
+const previewPane = document.getElementById("preview-pane")!;
+const divider1 = document.getElementById("divider-1")!;
+const divider2 = document.getElementById("divider-2")!;
+const toggleTypstBtn = document.getElementById("toggle-typst")!;
+const togglePreviewBtn = document.getElementById("toggle-preview")!;
+
+// zoom
+let zoomLevel = 1.0;
+const ZOOM_STEP = 0.15;
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 4.0;
+
+function applyZoom() {
+  document.querySelectorAll<HTMLElement>("#svg-container .page").forEach(p => {
+    p.style.zoom = String(zoomLevel);
+  });
+}
+
+function changeZoom(delta: number) {
+  zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoomLevel + delta));
+  applyZoom();
+}
+
+svgContainer.addEventListener("wheel", e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  changeZoom(e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP);
+}, { passive: false });
+
+document.addEventListener("keydown", e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  if (e.key === "=" || e.key === "+") { e.preventDefault(); changeZoom(ZOOM_STEP); }
+  else if (e.key === "-") { e.preventDefault(); changeZoom(-ZOOM_STEP); }
+  else if (e.key === "0") { e.preventDefault(); zoomLevel = 1.0; applyZoom(); }
+});
+
+// toggle panels
+function setPaneVisible(pane: HTMLElement, divider: HTMLElement, btn: HTMLElement, visible: boolean) {
+  pane.style.display = visible ? "" : "none";
+  divider.style.display = visible ? "" : "none";
+  btn.classList.toggle("active", visible);
+}
+
+toggleTypstBtn.addEventListener("click", () => {
+  setPaneVisible(outputPane, divider1, toggleTypstBtn, outputPane.style.display === "none");
+});
+
+togglePreviewBtn.addEventListener("click", () => {
+  setPaneVisible(previewPane, divider2, togglePreviewBtn, previewPane.style.display === "none");
+});
 
 let lastGenerated = "";
 
@@ -32,6 +83,7 @@ async function compile() {
   try {
     const pages = await invoke<string[]>("compile_to_svg", { content });
     svgContainer.innerHTML = pages.map(svg => `<div class="page">${svg}</div>`).join("");
+    applyZoom();
     setStatus(previewStatus, "done", `${pages.length} ${pages.length === 1 ? "pagina" : "pagine"}`);
   } catch (e) {
     setStatus(previewStatus, "error", String(e));
@@ -107,7 +159,7 @@ const italianView = new EditorView({
       }),
     ],
   }),
-  parent: document.getElementById("editor-pane")!,
+  parent: document.getElementById("editor-inner")!,
 });
 
 // pannello centrale: Typst editabile — Ctrl+S compila direttamente

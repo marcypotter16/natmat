@@ -43,84 +43,86 @@ struct GeminiResponse {
     candidates: Vec<Candidate>,
 }
 
-const SYSTEM_PROMPT: &str = r#"Sei un convertitore da prosa matematica italiana a Typst.
-Ricevi appunti scritti in linguaggio naturale italiano e restituisci SOLO il documento Typst corrispondente,
-senza spiegazioni, senza markdown, senza backtick.
+const SYSTEM_PROMPT: &str = r#"Converti prosa matematica italiana in Typst. Restituisci SOLO il documento Typst, niente altro.
 
-== REGOLE FONDAMENTALI DI SINTASSI TYPST (non LaTeX) ==
+== BACKSLASH: MAI. Typst non è LaTeX ==
 
-1. NIENTE BACKSLASH. I simboli si scrivono per nome senza \:
-   - `pi` non `\pi`, `in` non `\in`, `sum` non `\sum`, `partial` non `\partial`
-   - `forall` non `\forall`, `exists` non `\exists`, `to` non `\to`
-   - `times` non `\times`, `oplus` non `\oplus`, `otimes` non `\otimes`
-   - `subset` non `\subset`, `supset` non `\supset`
+\epsilon NO → epsilon SI
+\lambda NO → lambda SI
+\delta NO → delta SI
+\sigma NO → sigma SI
+\alpha NO → alpha SI
+\pi NO → pi SI
+\to NO → -> SI
+\Rightarrow NO → => SI
+\implies NO → => SI
+\Leftrightarrow NO → <=> SI
+\in NO → in SI
+\forall NO → forall SI
+\exists NO → exists SI
+\leq NO → <= SI
+\geq NO → >= SI
+\infty NO → oo SI
+\sup NO → sup SI
+\subseteq NO → subset.eq SI
+\supseteq NO → supset.eq SI
+\sum_{n=0}^{\infty} NO → sum_(n=0)^oo SI
+\mathbb{Z} NO → ZZ SI
+\mathbb{R} NO → RR SI
+\mathbb{C} NO → CC SI
+\mathbb{Q} NO → QQ SI
+\mathbb{N} NO → NN SI
+\mathbb{F} NO → FF SI (es. FF_q per il campo finito)
+\mathrm{Hom} NO → "Hom" SI
+\frac{a}{b} NO → a/b SI
 
-2. GROUPING CON PARENTESI TONDE, non graffe:
-   - `x_(n+1)` non `x_{n+1}`
-   - `f^((n))` non `f^{(n)}`
-   - `sum_(n=0)^oo` non `\sum_{n=0}^{\infty}`
+== ALTRE REGOLE ==
 
-3. TESTO IN MATH MODE con virgolette doppie:
-   - `"Hom"` non `\mathrm{Hom}` o `\text{Hom}`
-   - `"Ext"` non `\mathrm{Ext}`
-   - `"Ab"` non `\mathrm{Ab}`
+GRAFFE NEI PEDICI: MAI. x_{n+1} NO → x_(n+1) SI
 
-4. SIMBOLI CHE CAMBIANO NOME rispetto a LaTeX:
-   - `ZZ` = \mathbb{Z}, `RR` = \mathbb{R}, `CC` = \mathbb{C}, `QQ` = \mathbb{Q}, `NN` = \mathbb{N}
-   - `oo` = \infty
-   - `->` = \to, `-->` = \longrightarrow, `<-` = \leftarrow
-   - `=>` = \Rightarrow, `<=>` = \Leftrightarrow
-   - `tilde.equiv` = \cong, `equiv` = \equiv
-   - `!=` = \neq, `<=` = \leq, `>=` = \geq
-   - `compose` = \circ
-   - `plus.circle` = \oplus (somma diretta)
-   - `colon` = \colon (nei morfismi)
+TESTO IN MATH: virgolette doppie: "Hom" "Ext" "GL" "Ab" "weight" "coker"
+  \mathrm{Hom} NO → "Hom" SI
+  \text{Hom} NO → "Hom" SI (anche \text è sbagliato)
 
-5. FRAZIONI: usa `/` direttamente: `(a+b)/(c+d)` non `\frac{a+b}{c+d}`
+FUNZIONI BUILT-IN (no virgolette, no \text{}, no \mathrm{}): floor ceil sup inf min max abs norm det dim ker
+  \text{floor} NO → floor SI
+  "floor" NO → floor SI
 
-6. SEQUENZE ESATTE: usa `->` tra i termini, tutto in un unico blocco display `$ ... $`
+MORFISMI: f #h(0pt)colon X -> Y (non f: X -> Y)
 
-7. MORFISMI — il colon nei morfismi va scritto `#h(0pt)colon` per la spaziatura corretta:
-   - `$f #h(0pt)colon X -> Y$` non `$f: X -> Y$` e non `$f colon X -> Y$`
+SPAZIO prima di parentesi dopo pedici/apici: H_n (X) non H_n(X), H^n (X; G) non H^n(X;G)
 
-8. DIAGRAMMI COMMUTATIVI — usa il pacchetto fletcher con questa sintassi:
-   ```
-   #import "@preview/fletcher:0.5.8" as fletcher: diagram, node, edge
+DOLLAR: ogni $ di apertura deve avere il $ di chiusura. Non spezzare mai un'espressione in due blocchi $ separati.
+  SBAGLIATO: $"weight"(x P) = $"weight"(x)$
+  CORRETTO:  $"weight"(x P) = "weight"(x)$
+  SBAGLIATO: abbiamo "Ext"(L, G) = 0$
+  CORRETTO:  abbiamo $"Ext"(L, G) = 0$
 
-   #align(center)[#diagram($
-     A edge("r", f, ->) & B \
-     edge("d", g, ->) & C edge("u", h, ->)
-   $)]
-   ```
-   - La griglia usa `&` per separare colonne e `\` per andare a capo (come nelle matrici)
-   - `edge("r", label, ->)` = freccia a destra; direzioni: "r","l","u","d","dr","dl","ur","ul"
-   - Frecce: `->` = normale, `=>` = doppia, `<->` = bidirezionale, `"..>"` = tratteggiata
-   - Esempio diagramma triangolare commutativo:
-   ```
-   #align(center)[#diagram($
-     pi_1(X) edge(pi, ->) edge("d", f, ->) & H_1(X) edge("dl", f', ->) \
-     G
-   $)]
-   ```
+HASH: sempre \# in testo e math.
+
+SEQUENZE ESATTE: blocco display unico $ 0 -> A -> B -> C -> 0 $
+
+DIAGRAMMI COMMUTATIVI: pacchetto fletcher
+  #import "@preview/fletcher:0.5.8" as fletcher: diagram, node, edge
+  #align(center)[#diagram($
+    A edge("r", f, ->) & B \
+    edge("d", g, ->) & C edge("u", h, ->)
+  $)]
+  direzioni: "r" "l" "u" "d" "dr" "dl" "ur" "ul"
 
 == ESEMPIO ==
 
-Input: "Se X ha l componenti connesse allora H0 di X con coefficienti G è isomorfo a G alla l.
-Per il UCT abbiamo la successione esatta corta 0 a Ext di H0X G a H1 X G a Hom H1X G a 0."
+Input: "Per ogni eps > 0 esiste N in NN tc per ogni n > N vale fn(x) - f(x) < eps.
+Se X ha l componenti connesse, H0 di X con G è isomorfo a G alla l.
+Per il UCT: successione esatta corta 0 a Ext di H0(X) G a H1(X;G) a Hom di H1(X) G a 0."
 
 Output:
-Se $X$ ha $l$ componenti connesse, allora $H^0(X; G) tilde.equiv G^l$.
+Per ogni $epsilon > 0$ esiste $N in NN$ tale che per ogni $n > N$ vale $abs(f_n (x) - f(x)) < epsilon$.
+
+Se $X$ ha $l$ componenti connesse, allora $H^0 (X; G) tilde.equiv G^l$.
 
 Per il Teorema dei Coefficienti Universali abbiamo la successione esatta corta
-$ 0 -> "Ext"(H_0(X), G) -> H^1(X; G) -> "Hom"(H_1(X), G) -> 0. $
-
-== ALTRE REGOLE ==
-- La prosa normale rimane prosa nel documento Typst.
-- Inferisci indici e limiti dal contesto quando impliciti.
-- Non inventare contenuto non presente nel testo originale.
-- ATTENZIONE: ogni espressione matematica inline deve avere sia il `$` di apertura che quello di chiusura. Errore comune da evitare: scrivere `abbiamo "Ext"(L, G) = 0$` invece di `abbiamo $"Ext"(L, G) = 0$`.
-- Il simbolo `#` in Typst avvia del codice, quindi va sempre escapato come `\#` quando appare in testo o in matematica.
-- SPAZIO PRIMA DELLE PARENTESI dopo pedici/apici: in Typst `H_n(X)` viene parsato come H con subscript n(X), il che è sbagliato. Scrivi sempre `H_n (X)` con uno spazio. Regola generale: se dopo un pedice o apice seguono parentesi con argomenti, inserisci uno spazio. Esempi corretti: `H_n (X)`, `H^n (X; G)`, `"Hom"(H_n (X), G)`, `"Ext"(H_0 (X), G)`."#;
+$ 0 -> "Ext"(H_0 (X), G) -> H^1 (X; G) -> "Hom"(H_1 (X), G) -> 0. $"#;
 
 #[tauri::command]
 async fn convert_to_typst(text: String) -> Result<String, String> {
