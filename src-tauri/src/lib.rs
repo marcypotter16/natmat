@@ -155,86 +155,23 @@ Se $X$ ha $l$ componenti connesse, allora $H^0 (X; G) tilde.equiv G^l$.
 Per il Teorema dei Coefficienti Universali abbiamo la successione esatta corta
 $ 0 -> "Ext"(H_0 (X), G) -> H^1 (X; G) -> "Hom"(H_1 (X), G) -> 0. $"#;
 
-const GROQ_SYSTEM_PROMPT: &str = r#"Converti prosa matematica italiana in Typst. Restituisci SOLO il documento Typst, niente altro.
+const GROQ_SYSTEM_PROMPT: &str = r#"Converti prosa matematica italiana in LaTeX. Restituisci SOLO il corpo del documento (senza \documentclass, \begin{document}, \end{document} o preamble), niente altro.
 
-BACKSLASH: MAI USARE.
-
-\epsilon NO → epsilon SI
-\lambda NO → lambda SI
-\delta NO → delta SI
-\sigma NO → sigma SI
-\alpha NO → alpha SI
-\pi NO → pi SI
-\to NO → -> SI
-\Rightarrow NO → => SI
-\implies NO → => SI
-\Leftrightarrow NO → <=> SI
-\in NO → in SI
-\forall NO → forall SI
-\exists NO → exists SI
-\leq NO → <= SI
-\geq NO → >= SI
-\infty NO → oo SI
-\sup NO → sup SI
-\subseteq NO → subset.eq SI
-\supseteq NO → supset.eq SI
-\sum_{n=0}^{\infty} NO → sum_(n=0)^oo SI
-\mathbb{Z} NO → ZZ SI
-\mathbb{R} NO → RR SI
-\mathbb{C} NO → CC SI
-\mathbb{Q} NO → QQ SI
-\mathbb{N} NO → NN SI
-\mathbb{F} NO → FF SI (es. FF_q per il campo finito)
-\mathrm{Hom} NO → "Hom" SI
-\frac{a}{b} NO → a/b SI
-
-== ALTRE REGOLE ==
-
-GRAFFE NEI PEDICI: MAI. x_{n+1} NO → x_(n+1) SI
-
-TESTO IN MATH: virgolette doppie: "Hom" "Ext" "GL" "Ab" "weight" "coker"
-  \mathrm{Hom} NO → "Hom" SI
-  \text{Hom} NO → "Hom" SI (anche \text è sbagliato)
-
-FUNZIONI BUILT-IN (no virgolette, no \text{}, no \mathrm{}): floor ceil sup inf min max abs norm det dim ker
-  \text{floor} NO → floor SI
-  "floor" NO → floor SI
-
-MORFISMI: f #h(0pt)colon X -> Y (non f: X -> Y)
-
-SPAZIO prima di parentesi dopo pedici/apici: H_n (X) non H_n(X), H^n (X; G) non H^n(X;G)
-
-DOLLAR: ogni $ di apertura deve avere il $ di chiusura. Non spezzare mai un'espressione in due blocchi $ separati.
-  SBAGLIATO: $"weight"(x P) = $"weight"(x)$
-  CORRETTO:  $"weight"(x P) = "weight"(x)$
-  SBAGLIATO: abbiamo "Ext"(L, G) = 0$
-  CORRETTO:  abbiamo $"Ext"(L, G) = 0$
-
-HASH: sempre \# in testo e math.
-
-SEQUENZE ESATTE: blocco display unico $ 0 -> A -> B -> C -> 0 $
-
-DIAGRAMMI COMMUTATIVI: pacchetto fletcher
-  #import "@preview/fletcher:0.5.8" as fletcher: diagram, node, edge
-  #align(center)[#diagram($
-    A edge("r", f, ->) & B \
-    edge("d", g, ->) & C edge("u", h, ->)
-  $)]
-  direzioni: "r" "l" "u" "d" "dr" "dl" "ur" "ul"
+Usa LaTeX standard con amsmath, amssymb, amsthm. La prosa normale rimane prosa. La matematica va in $...$ (inline) o \[...\] (display).
 
 == ESEMPIO ==
 
-Input: "Per ogni eps > 0 esiste N in NN tc per ogni n > N vale fn(x) - f(x) < eps.
+Input: "Per ogni eps > 0 esiste N naturale tc per ogni n > N vale fn(x) - f(x) < eps.
 Se X ha l componenti connesse, H0 di X con G è isomorfo a G alla l.
 Per il UCT: successione esatta corta 0 a Ext di H0(X) G a H1(X;G) a Hom di H1(X) G a 0."
 
 Output:
-Per ogni $epsilon > 0$ esiste $N in NN$ tale che per ogni $n > N$ vale $abs(f_n (x) - f(x)) < epsilon$.
+Per ogni $\varepsilon > 0$ esiste $N \in \mathbb{N}$ tale che per ogni $n > N$ vale $|f_n(x) - f(x)| < \varepsilon$.
 
-Se $X$ ha $l$ componenti connesse, allora $H^0 (X; G) tilde.equiv G^l$.
+Se $X$ ha $l$ componenti connesse, allora $H^0(X; G) \cong G^l$.
 
 Per il Teorema dei Coefficienti Universali abbiamo la successione esatta corta
-$ 0 -> "Ext"(H_0 (X), G) -> H^1 (X; G) -> "Hom"(H_1 (X), G) -> 0. $"#;
+\[ 0 \to \mathrm{Ext}(H_0(X), G) \to H^1(X; G) \to \mathrm{Hom}(H_1(X), G) \to 0. \]"#;
 
 #[tauri::command]
 async fn convert_to_typst(text: String, provider: String) -> Result<String, String> {
@@ -338,48 +275,68 @@ async fn compile_to_svg(content: String) -> Result<Vec<String>, String> {
     let tmp = std::env::temp_dir().join("natmat");
     tokio::fs::create_dir_all(&tmp).await.map_err(|e| e.to_string())?;
 
-    let typ_file = tmp.join("doc.typ");
-    tokio::fs::write(&typ_file, &content).await.map_err(|e| e.to_string())?;
+    let preamble = r#"\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=2cm]{geometry}
+\pagestyle{empty}
+\begin{document}
+"#;
+    let full_doc = format!("{}{}\n\\end{{document}}", preamble, content);
 
-    // clean up previous output
-    let _ = tokio::fs::remove_file(tmp.join("doc.svg")).await;
-    for i in 1..=50 {
-        let _ = tokio::fs::remove_file(tmp.join(format!("doc_{i}.svg"))).await;
-    }
+    let tex_file = tmp.join("doc.tex");
+    tokio::fs::write(&tex_file, &full_doc).await.map_err(|e| e.to_string())?;
 
-    let output = tokio::process::Command::new("typst")
-        .arg("compile")
-        .arg(&typ_file)
-        .arg(tmp.join("doc.svg"))
+    // pdflatex
+    let output = tokio::process::Command::new("pdflatex")
+        .arg("-interaction=nonstopmode")
+        .arg("-output-directory")
+        .arg(&tmp)
+        .arg(&tex_file)
         .output()
         .await
-        .map_err(|e| format!("typst non trovato nel PATH: {e}. Installalo da https://typst.app"))?;
+        .map_err(|e| format!("pdflatex non trovato nel PATH: {e}"))?;
+
+    if !output.status.success() {
+        let log = tokio::fs::read_to_string(tmp.join("doc.log")).await.unwrap_or_default();
+        let errors: String = log.lines()
+            .filter(|l| l.starts_with('!'))
+            .collect::<Vec<_>>()
+            .join("\n");
+        return Err(format!("Errore LaTeX:\n{errors}"));
+    }
+
+    // dvisvgm — converte PDF in SVG pagina per pagina
+    let pdf_file = tmp.join("doc.pdf");
+    let output = tokio::process::Command::new("dvisvgm")
+        .arg("--pdf")
+        .arg("--page=1-")
+        .arg("--output=%f-p%p.svg")
+        .arg(&pdf_file)
+        .current_dir(&tmp)
+        .output()
+        .await
+        .map_err(|e| format!("dvisvgm non trovato nel PATH: {e}"))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Errore Typst: {stderr}"));
+        return Err(format!("Errore dvisvgm: {stderr}"));
     }
 
-    // collect pages: typst outputs doc.svg (single) or doc_1.svg, doc_2.svg, ... (multi)
+    // raccoglie doc-p1.svg, doc-p2.svg, ...
     let mut pages = Vec::new();
-
-    let single = tmp.join("doc.svg");
-    if single.exists() {
-        let svg = tokio::fs::read_to_string(&single).await.map_err(|e| e.to_string())?;
+    let mut i = 1;
+    loop {
+        let path = tmp.join(format!("doc-p{i}.svg"));
+        if !path.exists() { break; }
+        let svg = tokio::fs::read_to_string(&path).await.map_err(|e| e.to_string())?;
         pages.push(svg);
-    } else {
-        let mut i = 1;
-        loop {
-            let path = tmp.join(format!("doc_{i}.svg"));
-            if !path.exists() { break; }
-            let svg = tokio::fs::read_to_string(&path).await.map_err(|e| e.to_string())?;
-            pages.push(svg);
-            i += 1;
-        }
+        i += 1;
     }
 
     if pages.is_empty() {
-        return Err("Nessun SVG generato da typst".to_string());
+        return Err("Nessun SVG generato da dvisvgm".to_string());
     }
 
     Ok(pages)

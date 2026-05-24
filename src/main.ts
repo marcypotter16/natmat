@@ -17,7 +17,7 @@ const providerGemmaBtn = document.getElementById("provider-gemma")!;
 const providerGroqBtn = document.getElementById("provider-groq")!;
 
 // provider
-let provider = "gemma";
+let provider = "groq";
 
 providerGemmaBtn.addEventListener("click", () => {
   provider = "gemma";
