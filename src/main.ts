@@ -13,6 +13,23 @@ const divider1 = document.getElementById("divider-1")!;
 const divider2 = document.getElementById("divider-2")!;
 const toggleTypstBtn = document.getElementById("toggle-typst")!;
 const togglePreviewBtn = document.getElementById("toggle-preview")!;
+const providerGemmaBtn = document.getElementById("provider-gemma")!;
+const providerGroqBtn = document.getElementById("provider-groq")!;
+
+// provider
+let provider = "gemma";
+
+providerGemmaBtn.addEventListener("click", () => {
+  provider = "gemma";
+  providerGemmaBtn.classList.add("active");
+  providerGroqBtn.classList.remove("active");
+});
+
+providerGroqBtn.addEventListener("click", () => {
+  provider = "groq";
+  providerGroqBtn.classList.add("active");
+  providerGemmaBtn.classList.remove("active");
+});
 
 // zoom
 let zoomLevel = 1.0;
@@ -60,6 +77,7 @@ togglePreviewBtn.addEventListener("click", () => {
 });
 
 let lastGenerated = "";
+let lastParsedEnd = 0;
 
 function setStatus(el: HTMLElement, state: "idle" | "loading" | "done" | "error", text: string) {
   el.className = state;
@@ -69,6 +87,14 @@ function setStatus(el: HTMLElement, state: "idle" | "loading" | "done" | "error"
 function setTypstContent(content: string) {
   typstView.dispatch({
     changes: { from: 0, to: typstView.state.doc.length, insert: content },
+  });
+}
+
+function appendTypstContent(chunk: string) {
+  const current = typstView.state.doc.toString();
+  const sep = current.trim() ? "\n\n" : "";
+  typstView.dispatch({
+    changes: { from: typstView.state.doc.length, insert: sep + chunk },
   });
 }
 
@@ -91,21 +117,34 @@ async function compile() {
 }
 
 async function convertAndCompile() {
-  const text = italianView.state.doc.toString();
-  if (!text.trim()) {
+  const fullText = italianView.state.doc.toString();
+
+  // se l'utente ha cancellato testo prima di lastParsedEnd, reset completo
+  if (lastParsedEnd > fullText.length) {
+    lastParsedEnd = 0;
+    lastGenerated = "";
     setTypstContent("");
-    svgContainer.innerHTML = "";
-    setStatus(statusEl, "idle", "Ctrl+S per convertire");
-    setStatus(previewStatus, "idle", "");
+  }
+
+  const newText = fullText.slice(lastParsedEnd);
+
+  if (!newText.trim()) {
+    if (!fullText.trim()) {
+      setTypstContent("");
+      svgContainer.innerHTML = "";
+      setStatus(statusEl, "idle", "Ctrl+S per convertire");
+      setStatus(previewStatus, "idle", "");
+    }
     return;
   }
 
   setStatus(statusEl, "loading", "conversione...");
   setStatus(previewStatus, "idle", "");
   try {
-    const typst = await invoke<string>("convert_to_typst", { text });
-    lastGenerated = typst;
-    setTypstContent(typst);
+    const typst = await invoke<string>("convert_to_typst", { text: newText, provider });
+    lastGenerated += (lastGenerated ? "\n\n" : "") + typst;
+    lastParsedEnd = fullText.length;
+    appendTypstContent(typst);
     setStatus(statusEl, "done", "ok");
   } catch (e) {
     setStatus(statusEl, "error", String(e));
@@ -124,6 +163,7 @@ async function saveSession() {
       italian,
       generated: lastGenerated,
       corrected,
+      provider,
     });
     setStatus(statusEl, "done", `salvato → ${path}`);
   } catch (e) {
