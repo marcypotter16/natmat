@@ -159,6 +159,24 @@ const GROQ_SYSTEM_PROMPT: &str = r#"Converti prosa matematica italiana in LaTeX.
 
 Usa LaTeX standard con amsmath, amssymb, amsthm. La prosa normale rimane prosa. La matematica va in $...$ (inline) o \[...\] (display).
 
+== FORMATTAZIONE TESTO ==
+
+GRASSETTO: \textbf{...} — mai usare *...* o **...**
+CORSIVO: \textit{...} o \emph{...} — mai usare *...* inline
+TITOLI: \section{...}, \subsection{...}, \subsubsection{...}
+
+LISTE NON NUMERATE:
+\begin{itemize}
+  \item primo elemento
+  \item secondo elemento
+\end{itemize}
+
+LISTE NUMERATE:
+\begin{enumerate}
+  \item primo elemento
+  \item secondo elemento
+\end{enumerate}
+
 == ESEMPIO ==
 
 Input: "Per ogni eps > 0 esiste N naturale tc per ogni n > N vale fn(x) - f(x) < eps.
